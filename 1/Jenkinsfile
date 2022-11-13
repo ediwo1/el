@@ -1,0 +1,32 @@
+pipeline {
+    agent any
+    stages {
+        stage('Checkout') {
+            steps {
+                sh """
+                    [ -d el ] && rm -rf el
+                    git clone https://github.com/ediwo1/el.git
+                """
+            }    
+        }
+        
+        stage('Build docker image') {
+            steps{
+                
+                dir("/$WORKSPACE/el") {
+                    sh "docker build -f 1/Dockerfile --tag ediwo1/elbit:flask-1 ."
+                }
+            }
+        }
+        
+        stage('Push docker image to repository') {
+            steps{
+                
+                withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials', passwordVariable: 'PASSWORD', usernameVariable: 'USERNAME')]) {
+                    sh "docker login -u $USERNAME -p $PASSWORD"
+                    sh "docker push ediwo1/elbit:flask-1"
+                }
+            }
+        }
+    }
+}

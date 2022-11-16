@@ -1,0 +1,51 @@
+
+pipeline {
+    agent any
+    stages {
+        stage('Checkout') {
+            steps {
+                sh """
+                    [ -d el ] && rm -rf el
+                    git clone https://github.com/ediwo1/el.git
+                """
+            }    
+        }
+        
+        stage('Pull docker image') {
+            steps{
+                
+                dir("/$WORKSPACE/el") {
+                    sh """
+                      docker pull ediwo1/elbit:flask-1
+                      docker pull ediwo1/elbit:nginx-1
+                    """
+                }
+            }
+        }
+        
+        stage('Run docker') {
+            steps{
+
+                sh "docker run --rm -d --name nginx -p 3200:80 ediwo1/elbit:nginx-1"
+                sh "docker run --rm -d --name flask -p 5000:5000 -v /var/run:/var/run ediwo1/elbit:flask-1"
+            }
+        }
+        
+        stage('HTTP request test') {
+            steps{
+
+                sh "curl http://192.168.220.215:3200"
+            }
+        }
+        
+        stage('Stop containers') {
+            steps{
+
+                sh """
+                   docker ps -q --filter "name=flask" | grep -q . && docker stop flask || echo flask container is not running
+                   docker ps -q --filter "name=nginx" | grep -q . && docker stop nginx || echo nginx container is not running
+                """
+            }
+        }
+    }
+}
